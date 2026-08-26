@@ -2,9 +2,9 @@ import { listItems, listContactMessages } from "@/lib/items";
 import Link from "next/link";
 
 export default async function DashboardOverviewPage() {
-  const allItems = listItems({ includeAll: true });
+  const allItems = await listItems({ includeAll: true });
   const published = allItems.filter((i) => i.status === "published");
-  const messages = listContactMessages() as { status: string }[];
+  const messages = (await listContactMessages()) as { status: string }[];
   const newMessages = messages.filter((m) => m.status === "new");
 
   const categoryCounts = {
@@ -15,7 +15,7 @@ export default async function DashboardOverviewPage() {
   };
 
   const stats = [
-    { label: "إجمالي العناصر", value: allItems.length, icon: "🗂️", color: "bg-[#7a1f2b]" },
+    { label: "إجمالي العناصر", value: allItems.length, icon: "📊", color: "bg-[#7a1f2b]" },
     { label: "عناصر منشورة", value: published.length, icon: "✅", color: "bg-green-600" },
     { label: "الرسائل الجديدة", value: newMessages.length, icon: "✉️", color: "bg-[#b08d57]" },
     { label: "إجمالي الرسائل", value: messages.length, icon: "📥", color: "bg-slate-500" },
@@ -73,3 +73,4 @@ export default async function DashboardOverviewPage() {
     </div>
   );
 }
+

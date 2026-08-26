@@ -4,7 +4,7 @@ import ItemForm from "@/components/admin/ItemForm";
 
 export default async function EditItemPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const item = getItem(Number(id));
+  const item = await getItem(Number(id));
   if (!item) notFound();
 
   return (
@@ -17,3 +17,4 @@ export default async function EditItemPage({ params }: { params: Promise<{ id: s
     </div>
   );
 }
+

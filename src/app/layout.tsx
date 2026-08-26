@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import "@fontsource/cairo/400.css";
 import "@fontsource/cairo/500.css";
 import "@fontsource/cairo/600.css";
@@ -22,8 +22,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ar">
-      <body>{children}</body>
+    <html lang="ar" dir="rtl">
+      <body className="antialiased">{children}</body>
     </html>
   );
 }

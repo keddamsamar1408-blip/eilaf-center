@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+﻿import { getTranslations } from "next-intl/server";
 import { listItems, type ItemCategory } from "@/lib/items";
 import { getAllSettings } from "@/lib/db";
 import ItemCard from "@/components/ItemCard";
@@ -12,8 +12,8 @@ export default async function CategoryPage({
 }) {
   const t = await getTranslations(namespace);
   const tCommon = await getTranslations("common");
-  const settings = getAllSettings();
-  const items = listItems({ category });
+  const settings = await getAllSettings();
+  const items = await listItems({ category });
 
   return (
     <div>
@@ -41,3 +41,4 @@ export default async function CategoryPage({
     </div>
   );
 }
+

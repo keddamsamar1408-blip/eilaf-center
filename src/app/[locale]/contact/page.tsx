@@ -7,7 +7,7 @@ export default async function ContactPage() {
   const t = await getTranslations("contact");
   const tCommon = await getTranslations("common");
   const locale = (await getLocale()) as Locale;
-  const settings = getAllSettings();
+  const settings = await getAllSettings();
 
   const address = locale === "fr" ? settings.address_fr : locale === "en" ? settings.address_en : settings.address_ar;
   const mapQuery = encodeURIComponent(address);
@@ -53,15 +53,15 @@ export default async function ContactPage() {
 
               <ul className="mt-6 space-y-4 text-sm">
                 <li className="flex items-start gap-3">
-                  <span className="text-gold">📍</span>
+                  <span className="text-gold">ًں“چ</span>
                   <span>{address}</span>
                 </li>
                 <li className="flex items-center gap-3">
-                  <span className="text-gold">📞</span>
+                  <span className="text-gold">ًں“‍</span>
                   <a href={`tel:${settings.phone_1}`} dir="ltr">{settings.phone_1}</a>
                 </li>
                 <li className="flex items-center gap-3">
-                  <span className="text-gold">📞</span>
+                  <span className="text-gold">ًں“‍</span>
                   <a href={`tel:${settings.phone_2}`} dir="ltr">{settings.phone_2}</a>
                 </li>
                 <li className="flex items-center gap-3">
@@ -89,3 +89,4 @@ export default async function ContactPage() {
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { notFound } from "next/navigation";
 import { locales, localeDirection, type Locale } from "@/i18n/locales";
@@ -13,7 +13,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  const settings = getAllSettings();
+  const settings = await getAllSettings();
   const nameKey = locale === "fr" ? "center_name_fr" : locale === "en" ? "center_name_en" : "center_name_ar";
   const taglineKey = locale === "fr" ? "tagline_fr" : locale === "en" ? "tagline_en" : "tagline_ar";
   return {
@@ -37,7 +37,7 @@ export default async function LocaleLayout({
   const { locale } = await params;
   if (!hasLocale(locales, locale)) notFound();
 
-  const settings = getAllSettings();
+  const settings = await getAllSettings();
   const dir = localeDirection[locale as Locale];
   const centerName =
     locale === "fr" ? settings.center_name_fr : locale === "en" ? settings.center_name_en : settings.center_name_ar;
@@ -46,24 +46,24 @@ export default async function LocaleLayout({
     locale === "fr" ? settings.address_fr : locale === "en" ? settings.address_en : settings.address_ar;
 
   return (
-    <html lang={locale} dir={dir}>
-      <body className="antialiased">
-        <NextIntlClientProvider>
-          <Header logoUrl={settings.logo_url} centerName={centerName} />
-          <main className="min-h-screen">{children}</main>
-          <Footer
-            logoUrl={settings.logo_url}
-            centerName={centerName}
-            address={address}
-            phone1={settings.phone_1}
-            phone2={settings.phone_2}
-            email={settings.email}
-            facebookUrl={settings.facebook_url}
-            instagramUrl={settings.instagram_url}
-          />
-          <WhatsAppButton phone={settings.whatsapp_number} />
-        </NextIntlClientProvider>
-      </body>
-    </html>
+    <div dir={dir} className="antialiased">
+      <NextIntlClientProvider>
+        <Header logoUrl={settings.logo_url} centerName={centerName} />
+        <main className="min-h-screen">{children}</main>
+        <Footer
+          logoUrl={settings.logo_url}
+          centerName={centerName}
+          address={address}
+          phone1={settings.phone_1}
+          phone2={settings.phone_2}
+          email={settings.email}
+          facebookUrl={settings.facebook_url}
+          instagramUrl={settings.instagram_url}
+        />
+        <WhatsAppButton phone={settings.whatsapp_number} />
+      </NextIntlClientProvider>
+    </div>
   );
 }
+
+

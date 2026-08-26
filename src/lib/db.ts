@@ -30,7 +30,17 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 async function migrate() {
-  await pool.query(`
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // Prevent concurrent Next.js workers from running migrations simultaneously.
+    await client.query(
+      "SELECT pg_advisory_xact_lock(hashtext('eilaf-center-migration'))"
+    );
+
+  await client.query(`
     CREATE TABLE IF NOT EXISTS admins (
       id SERIAL PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
@@ -138,7 +148,7 @@ async function migrate() {
   };
 
   for (const [key, value] of Object.entries(defaultSettings)) {
-    await pool.query(
+    await client.query(
       `
       INSERT INTO settings (key, value)
       VALUES ($1, $2)
@@ -148,7 +158,7 @@ async function migrate() {
     );
   }
 
-  const adminResult = await pool.query(
+  const adminResult = await client.query(
     "SELECT COUNT(*)::int AS count FROM admins"
   );
 
@@ -165,7 +175,7 @@ async function migrate() {
 
     const hash = bcrypt.hashSync(defaultPassword, 10);
 
-    await pool.query(
+    await client.query(
       `
       INSERT INTO admins (
         email,
@@ -186,7 +196,7 @@ async function migrate() {
     );
   }
 
-  const itemResult = await pool.query(
+  const itemResult = await client.query(
     "SELECT COUNT(*)::int AS count FROM items"
   );
 
@@ -305,7 +315,7 @@ async function migrate() {
     ];
 
     for (const item of samples) {
-      await pool.query(
+      await client.query(
         `
         INSERT INTO items (
           category,
@@ -356,6 +366,14 @@ async function migrate() {
         ]
       );
     }
+  }
+
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
   }
 }
 
@@ -412,3 +430,6 @@ export async function setSetting(
     [key, value]
   );
 }
+
+
+

@@ -1,4 +1,4 @@
-import { db } from "./db";
+import { pool, ensureDatabase } from "./db";
 
 export type ItemCategory = "support" | "course" | "education" | "event";
 export type ItemMode = "in_person" | "zoom" | "google_meet" | "hybrid";
@@ -29,33 +29,60 @@ export interface Item {
   updated_at: string;
 }
 
-export function listItems(opts: {
-  category?: ItemCategory;
-  status?: ItemStatus;
-  includeAll?: boolean; // admin view: include drafts/archived
-} = {}): Item[] {
-  const clauses: string[] = [];
-  const params: Record<string, string> = {};
+export async function listItems(
+  opts: {
+    category?: ItemCategory;
+    status?: ItemStatus;
+    includeAll?: boolean;
+  } = {}
+): Promise<Item[]> {
+  await ensureDatabase();
+
+  const conditions: string[] = [];
+  const values: unknown[] = [];
 
   if (opts.category) {
-    clauses.push("category = @category");
-    params.category = opts.category;
-  }
-  if (!opts.includeAll) {
-    clauses.push("status = 'published'");
-  } else if (opts.status) {
-    clauses.push("status = @status");
-    params.status = opts.status;
+    values.push(opts.category);
+    conditions.push(`category = $${values.length}`);
   }
 
-  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
-  return db
-    .prepare(`SELECT * FROM items ${where} ORDER BY featured DESC, COALESCE(start_date, created_at) DESC, id DESC`)
-    .all(params) as Item[];
+  if (!opts.includeAll) {
+    conditions.push(`status = 'published'`);
+  } else if (opts.status) {
+    values.push(opts.status);
+    conditions.push(`status = $${values.length}`);
+  }
+
+  const where = conditions.length
+    ? `WHERE ${conditions.join(" AND ")}`
+    : "";
+
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM items
+    ${where}
+    ORDER BY featured DESC,
+      COALESCE(start_date, created_at::text) DESC,
+      id DESC
+    `,
+    values
+  );
+
+  return result.rows as Item[];
 }
 
-export function getItem(id: number): Item | undefined {
-  return db.prepare("SELECT * FROM items WHERE id = ?").get(id) as Item | undefined;
+export async function getItem(
+  id: number
+): Promise<Item | undefined> {
+  await ensureDatabase();
+
+  const result = await pool.query(
+    "SELECT * FROM items WHERE id = $1 LIMIT 1",
+    [id]
+  );
+
+  return result.rows[0] as Item | undefined;
 }
 
 export interface ItemInput {
@@ -80,82 +107,132 @@ export interface ItemInput {
   featured?: boolean;
 }
 
-export function createItem(input: ItemInput): number {
-  const stmt = db.prepare(`
+export async function createItem(
+  input: ItemInput
+): Promise<number> {
+  await ensureDatabase();
+
+  const result = await pool.query(
+    `
     INSERT INTO items (
-      category, title_ar, title_fr, title_en, description_ar, description_fr, description_en,
-      mode, meeting_link, location, start_date, start_time, end_date, end_time,
-      price, capacity, image_url, status, featured, updated_at
-    ) VALUES (
-      @category, @title_ar, @title_fr, @title_en, @description_ar, @description_fr, @description_en,
-      @mode, @meeting_link, @location, @start_date, @start_time, @end_date, @end_time,
-      @price, @capacity, @image_url, @status, @featured, datetime('now')
+      category,
+      title_ar,
+      title_fr,
+      title_en,
+      description_ar,
+      description_fr,
+      description_en,
+      mode,
+      meeting_link,
+      location,
+      start_date,
+      start_time,
+      end_date,
+      end_time,
+      price,
+      capacity,
+      image_url,
+      status,
+      featured,
+      updated_at
     )
-  `);
-  const result = stmt.run({
-    category: input.category,
-    title_ar: input.title_ar,
-    title_fr: input.title_fr ?? null,
-    title_en: input.title_en ?? null,
-    description_ar: input.description_ar ?? null,
-    description_fr: input.description_fr ?? null,
-    description_en: input.description_en ?? null,
-    mode: input.mode,
-    meeting_link: input.meeting_link ?? null,
-    location: input.location ?? null,
-    start_date: input.start_date ?? null,
-    start_time: input.start_time ?? null,
-    end_date: input.end_date ?? null,
-    end_time: input.end_time ?? null,
-    price: input.price ?? null,
-    capacity: input.capacity ?? null,
-    image_url: input.image_url ?? null,
-    status: input.status,
-    featured: input.featured ? 1 : 0,
-  });
-  return Number(result.lastInsertRowid);
+    VALUES (
+      $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,
+      $11,$12,$13,$14,$15,$16,$17,$18,$19,NOW()
+    )
+    RETURNING id
+    `,
+    [
+      input.category,
+      input.title_ar,
+      input.title_fr ?? null,
+      input.title_en ?? null,
+      input.description_ar ?? null,
+      input.description_fr ?? null,
+      input.description_en ?? null,
+      input.mode,
+      input.meeting_link ?? null,
+      input.location ?? null,
+      input.start_date ?? null,
+      input.start_time ?? null,
+      input.end_date ?? null,
+      input.end_time ?? null,
+      input.price ?? null,
+      input.capacity ?? null,
+      input.image_url ?? null,
+      input.status,
+      input.featured ? 1 : 0,
+    ]
+  );
+
+  return Number(result.rows[0].id);
 }
 
-export function updateItem(id: number, input: ItemInput): void {
-  const stmt = db.prepare(`
+export async function updateItem(
+  id: number,
+  input: ItemInput
+): Promise<void> {
+  await ensureDatabase();
+
+  await pool.query(
+    `
     UPDATE items SET
-      category = @category, title_ar = @title_ar, title_fr = @title_fr, title_en = @title_en,
-      description_ar = @description_ar, description_fr = @description_fr, description_en = @description_en,
-      mode = @mode, meeting_link = @meeting_link, location = @location,
-      start_date = @start_date, start_time = @start_time, end_date = @end_date, end_time = @end_time,
-      price = @price, capacity = @capacity, image_url = @image_url, status = @status, featured = @featured,
-      updated_at = datetime('now')
-    WHERE id = @id
-  `);
-  stmt.run({
-    id,
-    category: input.category,
-    title_ar: input.title_ar,
-    title_fr: input.title_fr ?? null,
-    title_en: input.title_en ?? null,
-    description_ar: input.description_ar ?? null,
-    description_fr: input.description_fr ?? null,
-    description_en: input.description_en ?? null,
-    mode: input.mode,
-    meeting_link: input.meeting_link ?? null,
-    location: input.location ?? null,
-    start_date: input.start_date ?? null,
-    start_time: input.start_time ?? null,
-    end_date: input.end_date ?? null,
-    end_time: input.end_time ?? null,
-    price: input.price ?? null,
-    capacity: input.capacity ?? null,
-    image_url: input.image_url ?? null,
-    status: input.status,
-    featured: input.featured ? 1 : 0,
-  });
+      category = $1,
+      title_ar = $2,
+      title_fr = $3,
+      title_en = $4,
+      description_ar = $5,
+      description_fr = $6,
+      description_en = $7,
+      mode = $8,
+      meeting_link = $9,
+      location = $10,
+      start_date = $11,
+      start_time = $12,
+      end_date = $13,
+      end_time = $14,
+      price = $15,
+      capacity = $16,
+      image_url = $17,
+      status = $18,
+      featured = $19,
+      updated_at = NOW()
+    WHERE id = $20
+    `,
+    [
+      input.category,
+      input.title_ar,
+      input.title_fr ?? null,
+      input.title_en ?? null,
+      input.description_ar ?? null,
+      input.description_fr ?? null,
+      input.description_en ?? null,
+      input.mode,
+      input.meeting_link ?? null,
+      input.location ?? null,
+      input.start_date ?? null,
+      input.start_time ?? null,
+      input.end_date ?? null,
+      input.end_time ?? null,
+      input.price ?? null,
+      input.capacity ?? null,
+      input.image_url ?? null,
+      input.status,
+      input.featured ? 1 : 0,
+      id,
+    ]
+  );
 }
 
-export function deleteItem(id: number): void {
-  db.prepare("DELETE FROM items WHERE id = ?").run(id);
+export async function deleteItem(id: number): Promise<void> {
+  await ensureDatabase();
+
+  await pool.query(
+    "DELETE FROM items WHERE id = $1",
+    [id]
+  );
 }
 
-// Contact messages
 export interface ContactMessageInput {
   name: string;
   email?: string;
@@ -165,31 +242,74 @@ export interface ContactMessageInput {
   item_id?: number;
 }
 
-export function createContactMessage(input: ContactMessageInput): number {
-  const result = db
-    .prepare(
-      `INSERT INTO contact_messages (name, email, phone, subject, message, item_id)
-       VALUES (@name, @email, @phone, @subject, @message, @item_id)`
+export async function createContactMessage(
+  input: ContactMessageInput
+): Promise<number> {
+  await ensureDatabase();
+
+  const result = await pool.query(
+    `
+    INSERT INTO contact_messages (
+      name,
+      email,
+      phone,
+      subject,
+      message,
+      item_id
     )
-    .run({
-      name: input.name,
-      email: input.email ?? null,
-      phone: input.phone ?? null,
-      subject: input.subject ?? null,
-      message: input.message,
-      item_id: input.item_id ?? null,
-    });
-  return Number(result.lastInsertRowid);
+    VALUES ($1,$2,$3,$4,$5,$6)
+    RETURNING id
+    `,
+    [
+      input.name,
+      input.email ?? null,
+      input.phone ?? null,
+      input.subject ?? null,
+      input.message,
+      input.item_id ?? null,
+    ]
+  );
+
+  return Number(result.rows[0].id);
 }
 
-export function listContactMessages() {
-  return db.prepare("SELECT * FROM contact_messages ORDER BY created_at DESC").all();
+export async function listContactMessages() {
+  await ensureDatabase();
+
+  const result = await pool.query(
+    `
+    SELECT *
+    FROM contact_messages
+    ORDER BY created_at DESC
+    `
+  );
+
+  return result.rows;
 }
 
-export function updateMessageStatus(id: number, status: string) {
-  db.prepare("UPDATE contact_messages SET status = ? WHERE id = ?").run(status, id);
+export async function updateMessageStatus(
+  id: number,
+  status: string
+): Promise<void> {
+  await ensureDatabase();
+
+  await pool.query(
+    `
+    UPDATE contact_messages
+    SET status = $1
+    WHERE id = $2
+    `,
+    [status, id]
+  );
 }
 
-export function deleteContactMessage(id: number) {
-  db.prepare("DELETE FROM contact_messages WHERE id = ?").run(id);
+export async function deleteContactMessage(
+  id: number
+): Promise<void> {
+  await ensureDatabase();
+
+  await pool.query(
+    "DELETE FROM contact_messages WHERE id = $1",
+    [id]
+  );
 }

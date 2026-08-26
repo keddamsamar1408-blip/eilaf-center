@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
-import { db } from "./db";
+import { pool, ensureDatabase } from "./db";
 
 const JWT_SECRET = process.env.JWT_SECRET;
 
@@ -52,15 +52,23 @@ export function verifyToken(token: string): AdminPayload | null {
   }
 }
 
-export function authenticateAdmin(
+export async function authenticateAdmin(
   email: string,
   password: string
-): AdminPayload | null {
-  const row = db
-    .prepare(
-      "SELECT id, email, name, password_hash FROM admins WHERE email = ?"
-    )
-    .get(email) as
+): Promise<AdminPayload | null> {
+  await ensureDatabase();
+
+  const result = await pool.query(
+    `
+    SELECT id, email, name, password_hash
+    FROM admins
+    WHERE email = $1
+    LIMIT 1
+    `,
+    [email]
+  );
+
+  const row = result.rows[0] as
     | {
         id: number;
         email: string;
@@ -114,15 +122,18 @@ export async function getCurrentAdmin(): Promise<AdminPayload | null> {
   return verifyToken(token);
 }
 
-export function changeAdminPassword(
+export async function changeAdminPassword(
   adminId: number,
   newPassword: string
 ) {
+  await ensureDatabase();
+
   const hash = bcrypt.hashSync(newPassword, 10);
 
-  db.prepare(
-    "UPDATE admins SET password_hash = ? WHERE id = ?"
-  ).run(hash, adminId);
+  await pool.query(
+    "UPDATE admins SET password_hash = $1 WHERE id = $2",
+    [hash, adminId]
+  );
 }
 
 export const SESSION_COOKIE_NAME = COOKIE_NAME;

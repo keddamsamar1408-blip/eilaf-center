@@ -6,7 +6,7 @@ import type { Locale } from "@/i18n/locales";
 export default async function AboutPage() {
   const t = await getTranslations("about");
   const locale = (await getLocale()) as Locale;
-  const settings = getAllSettings();
+  const settings = await getAllSettings();
 
   const address = locale === "fr" ? settings.address_fr : locale === "en" ? settings.address_en : settings.address_ar;
 
@@ -37,12 +37,12 @@ export default async function AboutPage() {
 
         <div className="mt-16 grid grid-cols-1 gap-6 md:grid-cols-2">
           <div className="card-hover rounded-2xl border border-maroon/10 bg-white p-8 shadow-sm">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cream text-2xl">🎯</div>
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cream text-2xl">ًںژ¯</div>
             <h3 className="mt-5 text-xl font-bold text-maroon-dark">{t("missionTitle")}</h3>
             <p className="mt-3 leading-relaxed text-ink/70">{t("missionText")}</p>
           </div>
           <div className="card-hover rounded-2xl border border-maroon/10 bg-white p-8 shadow-sm">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cream text-2xl">🔭</div>
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cream text-2xl">ًں”­</div>
             <h3 className="mt-5 text-xl font-bold text-maroon-dark">{t("visionTitle")}</h3>
             <p className="mt-3 leading-relaxed text-ink/70">{t("visionText")}</p>
           </div>
@@ -91,3 +91,4 @@ export default async function AboutPage() {
     </div>
   );
 }
+
