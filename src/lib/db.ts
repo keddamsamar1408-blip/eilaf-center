@@ -114,11 +114,9 @@ async function migrate() {
   `);
 
   const defaultSettings: Record<string, string> = {
-    center_name_ar: "مركز إيلاف للتدريب والإرشاد الأسري",
-    center_name_fr:
-      "Centre Eilaf de formation et d'accompagnement familial",
-    center_name_en:
-      "Eilaf Center for Training and Family Guidance",
+    center_name_ar: "مركز إيلاف للتدريب والتعليم والمرافقة النفسية",
+    center_name_fr: "Eilaf Center",
+    center_name_en: "Eilaf Center",
 
     tagline_ar:
       "نبني الإنسان... لننهض بالأسرة... ونرتقي بالمجتمع",
